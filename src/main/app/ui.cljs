@@ -3,28 +3,31 @@
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.dom :as dom]))
 
-(defsc Person [this {:person/keys [name age]}]
+(defsc Person [this {:person/keys [id name age] :as props}]
+  {:query [:person/id :person/name :person/age]
+   :ident (fn [] [:person/id (:person/id props)])}
   (dom/li
-    (dom/h5 (str name " (age: " age ")"))))
+    (dom/h5 (str name " (age: " age ")") (dom/button "X")))) ; (4)
 
-;; The keyfn generates a react key for each element based on props. See React documentation on keys.
-(def ui-person (comp/factory Person {:keyfn :person/name}))
+(def ui-person (comp/factory Person {:keyfn :person/id}))
 
-(defsc PersonList [this {:list/keys [label people]}]
+(defsc PersonList [this {:list/keys [id label people] :as props}]
+  {:query [:list/id :list/label {:list/people (comp/get-query Person)}]
+   :ident (fn [] [:list/id (:list/id props)])}
   (dom/div
-    (dom/h4 label)
-    (dom/ul
-      (map ui-person people))))
+   (dom/ul
+    (map #(ui-person (comp/computed % )) people))))
 
 (def ui-person-list (comp/factory PersonList))
 
-(defsc Root [this {:keys [ui/react-key]}]
-  (let [ui-data {:friends {:list/label "Friends" :list/people
-                           [{:person/name "Sally" :person/age 32}
-                            {:person/name "Joe" :person/age 22}]}
-                 :enemies {:list/label "Enemies" :list/people
-                           [{:person/name "Fred" :person/age 11}
-                            {:person/name "Bobby" :person/age 55}]}}]
-    (dom/div
-      (ui-person-list (:friends ui-data))
-      (ui-person-list (:enemies ui-data)))))
+(defsc Root [this {:keys [friends enemies]}]
+  {:query         [{:friends (comp/get-query PersonList)}
+                   {:enemies (comp/get-query PersonList)}]
+   :initial-state {}}
+  (dom/div
+    (dom/h3 "Friends")
+    (when friends
+      (ui-person-list friends))
+    (dom/h3 "Enemies")
+    (when enemies
+      (ui-person-list enemies))))
